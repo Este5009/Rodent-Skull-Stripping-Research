@@ -1,42 +1,38 @@
-# MedSAM Rodent Brain MRI Segmentation Evaluation
+# Rodent Skull Stripping and Brain Segmentation Research
 
-This repository contains an evaluation pipeline for MedSAM-based rodent brain MRI segmentation. The main experiment benchmarks MedSAM on CAMRI rat brain MRI using oracle bounding-box prompts generated from expert manual brain masks.
+Research code for evaluating MedSAM-based skull stripping and brain segmentation on rodent MRI. The current main experiment benchmarks MedSAM on CAMRI rat brain MRI using oracle bounding boxes generated from expert manual brain masks.
 
-The project focuses on segmentation evaluation, visualization, and result reporting. Raw imaging datasets and model checkpoints are excluded from version control.
+This repository contains code, result summaries, and selected visual outputs. Raw MRI data, masks, model checkpoints, virtual environments, and external repositories are intentionally excluded.
 
 ---
 
-## Project Overview
+## Project Goal
 
-The primary research question is:
+The main question is:
 
-> If MedSAM is given an ideal 2D bounding box derived from an expert brain mask, how accurately can it segment rodent brain MRI slices?
+> If MedSAM is given an ideal 2D bounding box from an expert brain mask, how accurately can it segment rodent brain MRI slices?
 
-The benchmark workflow is:
+This is an **oracle-box benchmark**, not a fully autonomous segmentation pipeline. The expert mask is used only to generate the bounding box prompt and to evaluate the predicted mask.
+
+Workflow:
 
 ```text
 MRI volume
     ↓
-Expert manual mask
+Expert brain mask
     ↓
-Oracle bounding box generation
+Oracle box per non-empty slice
     ↓
 MedSAM inference
     ↓
-Predicted brain mask
+Predicted mask in memory
     ↓
-Segmentation metrics
+Dice / IoU / precision / recall / Hausdorff
     ↓
-Summary figures and reports
+CSV results and visual summaries
 ```
 
-The evaluation computes:
-
-- Dice coefficient
-- Intersection over Union (IoU)
-- Precision
-- Recall
-- Hausdorff distance
+Predicted masks are used to compute metrics during runtime, but they are not currently saved as standalone mask files.
 
 ---
 
@@ -44,93 +40,164 @@ The evaluation computes:
 
 ```text
 .
-├── MedSAM/                              # Official MedSAM source code
-├── scripts/                             # Project scripts
-│   ├── evaluate_medsam_camri_rat.py
-│   ├── create_medsam_results_figures.py
-│   ├── display_camri_rat_pair.py
-│   ├── medsam_display_test.py
-│   └── whitestripe_mouse_diagnostic.py
-│
-├── results/                             # Selected result files
-│   ├── medsam_camri_rat_results.csv
-│   └── example result images
-│
-├── outputs/                             # Generated visualizations
-│   ├── camri_rat_examples/
-│   └── results_figures/
-│
 ├── README.md
 ├── requirements.txt
-└── .gitignore
+├── .gitignore
+├── evaluate_medsam_camri_rat.py
+├── create_medsam_results_figures.py
+├── display_camri_rat_pair.py
+├── whitestripe_mouse_diagnostic.py
+├── medsam_camri_rat_results.csv
+└── outputs/
+    ├── camri_rat_examples/
+    ├── diagnostics/
+    └── results_figures/
 ```
 
-The following local folders are intentionally excluded:
+Ignored local folders/files include:
 
 ```text
 medsam_env/
+MedSAM/
 Image Database/
 Mask_Database/
 Test_1_imgs/
 Research Papers/
-MedSAM/work_dir/
+*.dcm
+*.nii
+*.nii.gz
+*.pth
+*.pt
+*.ckpt
 ```
 
 ---
 
-## External Files Not Included
+## Script Overview
 
-This repository does not include:
+### `evaluate_medsam_camri_rat.py`
 
-- Raw DICOM files
-- NIfTI MRI volumes
-- Expert mask volumes
-- MedSAM checkpoint files
-- Local Python virtual environments
-- Research papers or PDFs
+Main MedSAM benchmark script.
 
-The MedSAM checkpoint should be placed locally at:
+It matches CAMRI MRI volumes with expert masks, generates oracle bounding boxes from non-empty mask slices, runs MedSAM inference, computes segmentation metrics, writes `medsam_camri_rat_results.csv`, and saves selected qualitative examples in `outputs/camri_rat_examples/`.
 
-```text
-MedSAM/work_dir/MedSAM/medsam_vit_b.pth
-```
+### `create_medsam_results_figures.py`
+
+Result reporting script.
+
+It reads `medsam_camri_rat_results.csv` and generates summary tables, plots, worst-case slice summaries, per-subject Dice summaries, and a markdown report in `outputs/results_figures/`.
+
+This script does not run MedSAM.
+
+### `display_camri_rat_pair.py`
+
+Dataset inspection utility.
+
+It displays a CAMRI MRI volume and its corresponding expert mask to verify that the files are matched, readable, and visually aligned before running the full benchmark.
+
+### `whitestripe_mouse_diagnostic.py`
+
+Preprocessing diagnostic utility.
+
+It explores WhiteStripe-style intensity normalization for mouse MRI by plotting ROI histograms, candidate intensity peaks, and normalized previews. It is exploratory and not required for the main CAMRI benchmark.
 
 ---
 
-## Environment Setup
+## Key Outputs
 
-Create a virtual environment:
+### `medsam_camri_rat_results.csv`
+
+Main quantitative results file. Each row corresponds to one evaluated 2D slice and includes:
+
+* Subject ID
+* Slice index
+* Dice
+* IoU
+* Precision
+* Recall
+* Hausdorff distance
+* Ground-truth mask area
+* Predicted mask area
+* Oracle bounding-box coordinates
+
+### `outputs/camri_rat_examples/`
+
+Selected visual examples from the benchmark. These figures show the MRI slice, oracle box, expert mask, and MedSAM prediction overlay.
+
+### `outputs/results_figures/`
+
+Summary figures and tables generated from the benchmark CSV.
+
+### `outputs/diagnostics/`
+
+Diagnostic figures from preprocessing experiments, such as WhiteStripe histogram checks.
+
+---
+
+## Local Setup
+
+### 1. Create environment
+
+macOS/Linux:
 
 ```bash
 python -m venv medsam_env
 source medsam_env/bin/activate
+pip install -r requirements.txt
 ```
 
-Install dependencies:
+Windows PowerShell:
 
-```bash
+```powershell
+python -m venv medsam_env
+.\medsam_env\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+If PowerShell blocks activation:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 ---
 
-## MedSAM Setup
+### 2. Clone MedSAM locally
 
-This repository includes the MedSAM source code, but not the model checkpoint.
+The official MedSAM source code is not included in this repository.
 
-Download the MedSAM ViT-B checkpoint separately and place it here:
+Clone it inside the project root:
+
+```bash
+git clone https://github.com/bowang-lab/MedSAM.git
+```
+
+Expected local structure:
+
+```text
+.
+├── MedSAM/
+├── evaluate_medsam_camri_rat.py
+└── ...
+```
+
+---
+
+### 3. Add MedSAM checkpoint
+
+Place the MedSAM ViT-B checkpoint at:
 
 ```text
 MedSAM/work_dir/MedSAM/medsam_vit_b.pth
 ```
 
-The evaluation script expects this path by default.
+The checkpoint is not tracked by Git.
 
 ---
 
-## Dataset Setup
+### 4. Add local datasets
 
-The CAMRI MRI data and expert masks should be stored locally using the following structure:
+The main benchmark expects:
 
 ```text
 Image Database/
@@ -141,71 +208,91 @@ Mask_Database/
     └── CAMRI Rat/
 ```
 
-These folders are excluded from GitHub because they contain large imaging data.
+These folders are ignored because they contain raw imaging data and masks.
 
 ---
 
-## Running the Main Benchmark
+## Running the Benchmark
 
-Run the full CAMRI rat MedSAM benchmark:
+Smoke test:
 
-```bash
-MPLBACKEND=Agg medsam_env/bin/python scripts/evaluate_medsam_camri_rat.py
-```
-
-Run a smoke test on one subject:
+macOS/Linux:
 
 ```bash
-MPLBACKEND=Agg medsam_env/bin/python scripts/evaluate_medsam_camri_rat.py --max-subjects 1
+MPLBACKEND=Agg medsam_env/bin/python evaluate_medsam_camri_rat.py --max-subjects 1
 ```
 
-The script produces:
+Windows PowerShell:
 
-```text
-medsam_camri_rat_results.csv
-outputs/camri_rat_examples/
+```powershell
+$env:MPLBACKEND="Agg"
+python evaluate_medsam_camri_rat.py --max-subjects 1
+```
+
+Full run:
+
+macOS/Linux:
+
+```bash
+MPLBACKEND=Agg medsam_env/bin/python evaluate_medsam_camri_rat.py
+```
+
+Windows PowerShell:
+
+```powershell
+$env:MPLBACKEND="Agg"
+python evaluate_medsam_camri_rat.py
 ```
 
 ---
 
-## Generating Result Figures
+## Generating Figures
 
-After running the benchmark, generate summary figures and reports:
+After running the benchmark:
+
+macOS/Linux:
 
 ```bash
-MPLBACKEND=Agg medsam_env/bin/python scripts/create_medsam_results_figures.py
+MPLBACKEND=Agg medsam_env/bin/python create_medsam_results_figures.py
 ```
 
-This creates:
+Windows PowerShell:
+
+```powershell
+$env:MPLBACKEND="Agg"
+python create_medsam_results_figures.py
+```
+
+Outputs are saved to:
 
 ```text
 outputs/results_figures/
 ```
 
-including summary tables, Dice distributions, per-subject plots, and worst-case slice analysis.
-
 ---
 
-## WhiteStripe Diagnostic Script
+## Collaboration Notes
 
-`whitestripe_mouse_diagnostic.py` is an exploratory preprocessing utility. It visualizes intensity histograms and WhiteStripe-style normalization for mouse MRI data.
+Before working on another computer:
 
-It is not required for the main CAMRI MedSAM benchmark.
+```bash
+git pull
+```
 
----
+After making changes:
 
-## Notes for Collaborators
+```bash
+git add .
+git commit -m "Describe the change"
+git push
+```
 
-- Do not commit raw medical imaging data.
-- Do not commit model checkpoints.
-- Do not commit the virtual environment.
-- Commit source code, selected result images, CSV summaries, and documentation.
-- If file paths change, update the default paths inside the scripts or pass paths through command-line arguments.
+Do not commit raw data, masks, checkpoints, virtual environments, or external repositories.
 
 ---
 
 ## Author
 
-Esteban Felix  
-Computer Engineering  
+Esteban Felix
+Computer Engineering
 Purdue University Indianapolis
