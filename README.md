@@ -33,32 +33,21 @@ Priority analyses:
 
 ```text
 .
-├── README.md
-├── requirements.txt
-├── AGENTS.md
-├── MEMORY.md
-├── MedSAM/                         # local external checkout, not tracked
-├── medsam_env/                     # local virtual environment, not tracked
-├── scripts/
-│   ├── core/
-│   │   ├── evaluate_medsam_camri_rat.py
-│   │   ├── create_medsam_results_figures.py
-│   │   ├── display_camri_rat_pair.py
-│   │   └── whitestripe_mouse_diagnostic.py
-│   └── experimental/
-│       ├── evaluate_medsam_phase1_sensitivity.py
-│       ├── evaluate_medsam_failure_analysis.py
-│       └── create_medsam_skull_stripped_example.py
-└── outputs/
-    ├── benchmarks/
-    ├── camri_rat_examples/
-    ├── results_figures/
-    ├── sensitivity/
-    ├── failure_analysis/
-    │   ├── runs/
-    │   ├── latest/
-    │   └── comparison/
-    └── demo_skull_stripping/
+|-- README.md
+|-- requirements.txt
+|-- docs/
+|-- scripts/
+|   |-- core/
+|   `-- experimental/
+`-- outputs/
+    |-- benchmarks/
+    |-- camri_rat_examples/
+    |-- demo_skull_stripping/
+    |-- diagnostics/
+    |-- failure_analysis/
+    |-- results_figures/
+    |-- sensitivity/
+    `-- smoke_tests/
 ```
 
 `scripts/core/` contains stable, validated scripts. New experiments and
@@ -66,33 +55,53 @@ presentation/demo utilities belong in `scripts/experimental/`.
 
 ---
 
-## Local Data And Model Paths
+## Datasets
 
-The expected local dataset layout is one level above this repository:
+Datasets may be stored locally. The preferred layout is one level above this
+repository:
 
 ```text
 ../Datasets/
-├── Image_Database/
-│   └── CAMRI Rat Brain MRI Data/
-└── Mask_Database/
-    └── RodentBrainMask/
-        └── CAMRI Rat/
+|-- Image_Database/
+|   `-- CAMRI Rat Brain MRI Data/
+`-- Mask_Database/
+    `-- RodentBrainMask/
+        `-- CAMRI Rat/
 ```
 
-The MedSAM checkpoint is expected at:
+Some older or local setups may instead use:
 
 ```text
-MedSAM/work_dir/MedSAM/medsam_vit_b.pth
+Image Database/
+Mask_Database/
 ```
 
-Raw imaging data, masks, checkpoints, external repositories, and virtual
-environments are local-only artifacts and should not be committed.
+Download sources:
+
+- Expert ground-truth masks / RodentBrainMasks:
+  https://drive.google.com/drive/folders/1cTlFFGL9iTUoZOT5Rgqi2ZAyqyPlXYd-
+- CAMRI Rat MRI images:
+  https://openneuro.org/datasets/ds002870/versions/1.0.0
+
+---
+
+## Local Files Not Tracked By Git
+
+The following files and directories are local dependencies or large artifacts and
+should remain outside version control:
+
+- `MedSAM/` external checkout
+- `medsam_env/` virtual environment, or an optional conda environment
+- `MedSAM/work_dir/MedSAM/medsam_vit_b.pth` checkpoint
+- raw MRI image datasets
+- expert mask datasets
+- large generated intermediates
 
 ---
 
 ## Environment
 
-Create and activate the local environment:
+Create and activate a local environment:
 
 ```bash
 python -m venv medsam_env
@@ -105,6 +114,29 @@ Run project scripts with:
 ```bash
 ./medsam_env/bin/python <script>
 ```
+
+---
+
+## Script Overview
+
+Stable scripts:
+
+- `scripts/core/evaluate_medsam_camri_rat.py` - reference CAMRI rat benchmark
+- `scripts/core/create_medsam_results_figures.py` - benchmark figures and summary
+  tables
+- `scripts/core/display_camri_rat_pair.py` - visual inspection of paired MRI/mask
+  slices
+- `scripts/core/whitestripe_mouse_diagnostic.py` - WhiteStripe preprocessing
+  diagnostic
+
+Experimental scripts:
+
+- `scripts/experimental/evaluate_medsam_phase1_sensitivity.py` - Phase 1
+  sensitivity experiments
+- `scripts/experimental/evaluate_medsam_failure_analysis.py` - easy/hard subject
+  failure analysis
+- `scripts/experimental/create_medsam_skull_stripped_example.py` - NIfTI
+  skull-stripping demo output
 
 ---
 
@@ -144,17 +176,8 @@ compare easy vs hard runs:
   --compare-runs easy_subjects hard_subjects
 ```
 
-Outputs are organized under:
-
-```text
-outputs/failure_analysis/
-├── runs/<run-name>/
-│   ├── tables/
-│   ├── figures/
-│   └── overlays/
-├── latest/
-└── comparison/
-```
+Outputs are organized under `outputs/failure_analysis/`, including run-specific
+tables, figures, overlays, latest results, and comparison summaries.
 
 ---
 
@@ -168,20 +191,10 @@ Generate a complete MedSAM skull-stripped NIfTI demo volume for 3D Slicer:
   --device cpu
 ```
 
-Outputs are saved to:
-
-```text
-outputs/demo_skull_stripping/sub-001/
-├── volumes/
-│   ├── medsam_pred_mask.nii.gz
-│   └── medsam_skull_stripped.nii.gz
-├── figures/
-├── tables/
-└── README.md
-```
-
-Both NIfTI volumes preserve the original MRI affine/header geometry and can be
-opened directly in 3D Slicer.
+Outputs are saved under `outputs/demo_skull_stripping/<subject-id>/`, including
+NIfTI volumes, figures, tables, and a per-demo README. The generated NIfTI
+volumes preserve the original MRI affine/header geometry and can be opened
+directly in 3D Slicer.
 
 ---
 
@@ -190,5 +203,5 @@ opened directly in 3D Slicer.
 - This repository is a research prototype, not clinical software.
 - Do not modify `scripts/core/` unless explicitly requested.
 - Prefer incremental experiments in `scripts/experimental/`.
-- Preserve raw data, masks, checkpoints, and generated local environments
-  outside version control.
+- Preserve raw data, masks, checkpoints, local environments, and large generated
+  intermediates outside version control.
