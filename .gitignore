@@ -67,3 +67,7 @@ temp/
 
 # MedSAM source code
 MedSAM/
+
+# Local AI assistant context
+AGENTS.md
+MEMORY.md
