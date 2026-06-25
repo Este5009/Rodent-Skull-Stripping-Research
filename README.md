@@ -1,38 +1,31 @@
-# Rodent Skull Stripping and Brain Segmentation Research
+# MedSAM Rodent MRI Segmentation Research
 
-Research code for evaluating MedSAM-based skull stripping and brain segmentation on rodent MRI. The current main experiment benchmarks MedSAM on CAMRI rat brain MRI using oracle bounding boxes generated from expert manual brain masks.
+Research prototype for understanding how MedSAM behaves on biomedical MRI
+segmentation tasks. The current benchmark uses CAMRI rat MRI and expert masks to
+study why oracle-box MedSAM can underperform rodent-specific supervised models.
 
-This repository contains code, result summaries, and selected visual outputs. Raw MRI data, masks, model checkpoints, virtual environments, and external repositories are intentionally excluded.
+MedSAM is treated as one candidate backend inside a broader autonomous
+segmentation pipeline. The present phase focuses on analysis, validation, and
+failure modes before introducing new model architectures.
 
 ---
 
-## Project Goal
+## Current Question
 
-The main question is:
-
-> If MedSAM is given an ideal 2D bounding box from an expert brain mask, how accurately can it segment rodent brain MRI slices?
-
-This is an **oracle-box benchmark**, not a fully autonomous segmentation pipeline. The expert mask is used only to generate the bounding box prompt and to evaluate the predicted mask.
-
-Workflow:
+The current CAMRI rat benchmark asks:
 
 ```text
-MRI volume
-    ↓
-Expert brain mask
-    ↓
-Oracle box per non-empty slice
-    ↓
-MedSAM inference
-    ↓
-Predicted mask in memory
-    ↓
-Dice / IoU / precision / recall / Hausdorff
-    ↓
-CSV results and visual summaries
+Why does MedSAM with expert-mask oracle boxes underperform stronger
+rodent-specific supervised models?
 ```
 
-Predicted masks are used to compute metrics during runtime, but they are not currently saved as standalone mask files.
+Priority analyses:
+
+- box-margin sensitivity
+- preprocessing sensitivity
+- implementation checks
+- metric analysis
+- visual QC and failure interpretation
 
 ---
 
@@ -42,103 +35,64 @@ Predicted masks are used to compute metrics during runtime, but they are not cur
 .
 ├── README.md
 ├── requirements.txt
-├── .gitignore
-├── evaluate_medsam_camri_rat.py
-├── create_medsam_results_figures.py
-├── display_camri_rat_pair.py
-├── whitestripe_mouse_diagnostic.py
-├── medsam_camri_rat_results.csv
+├── AGENTS.md
+├── MEMORY.md
+├── MedSAM/                         # local external checkout, not tracked
+├── medsam_env/                     # local virtual environment, not tracked
+├── scripts/
+│   ├── core/
+│   │   ├── evaluate_medsam_camri_rat.py
+│   │   ├── create_medsam_results_figures.py
+│   │   ├── display_camri_rat_pair.py
+│   │   └── whitestripe_mouse_diagnostic.py
+│   └── experimental/
+│       ├── evaluate_medsam_phase1_sensitivity.py
+│       ├── evaluate_medsam_failure_analysis.py
+│       └── create_medsam_skull_stripped_example.py
 └── outputs/
+    ├── benchmarks/
     ├── camri_rat_examples/
-    ├── diagnostics/
-    └── results_figures/
+    ├── results_figures/
+    ├── sensitivity/
+    ├── failure_analysis/
+    │   ├── runs/
+    │   ├── latest/
+    │   └── comparison/
+    └── demo_skull_stripping/
 ```
 
-Ignored local folders/files include:
+`scripts/core/` contains stable, validated scripts. New experiments and
+presentation/demo utilities belong in `scripts/experimental/`.
+
+---
+
+## Local Data And Model Paths
+
+The expected local dataset layout is one level above this repository:
 
 ```text
-medsam_env/
-MedSAM/
-Image Database/
-Mask_Database/
-Test_1_imgs/
-Research Papers/
-*.dcm
-*.nii
-*.nii.gz
-*.pth
-*.pt
-*.ckpt
+../Datasets/
+├── Image_Database/
+│   └── CAMRI Rat Brain MRI Data/
+└── Mask_Database/
+    └── RodentBrainMask/
+        └── CAMRI Rat/
 ```
 
----
+The MedSAM checkpoint is expected at:
 
-## Script Overview
+```text
+MedSAM/work_dir/MedSAM/medsam_vit_b.pth
+```
 
-### `evaluate_medsam_camri_rat.py`
-
-Main MedSAM benchmark script.
-
-It matches CAMRI MRI volumes with expert masks, generates oracle bounding boxes from non-empty mask slices, runs MedSAM inference, computes segmentation metrics, writes `medsam_camri_rat_results.csv`, and saves selected qualitative examples in `outputs/camri_rat_examples/`.
-
-### `create_medsam_results_figures.py`
-
-Result reporting script.
-
-It reads `medsam_camri_rat_results.csv` and generates summary tables, plots, worst-case slice summaries, per-subject Dice summaries, and a markdown report in `outputs/results_figures/`.
-
-This script does not run MedSAM.
-
-### `display_camri_rat_pair.py`
-
-Dataset inspection utility.
-
-It displays a CAMRI MRI volume and its corresponding expert mask to verify that the files are matched, readable, and visually aligned before running the full benchmark.
-
-### `whitestripe_mouse_diagnostic.py`
-
-Preprocessing diagnostic utility.
-
-It explores WhiteStripe-style intensity normalization for mouse MRI by plotting ROI histograms, candidate intensity peaks, and normalized previews. It is exploratory and not required for the main CAMRI benchmark.
+Raw imaging data, masks, checkpoints, external repositories, and virtual
+environments are local-only artifacts and should not be committed.
 
 ---
 
-## Key Outputs
+## Environment
 
-### `medsam_camri_rat_results.csv`
-
-Main quantitative results file. Each row corresponds to one evaluated 2D slice and includes:
-
-* Subject ID
-* Slice index
-* Dice
-* IoU
-* Precision
-* Recall
-* Hausdorff distance
-* Ground-truth mask area
-* Predicted mask area
-* Oracle bounding-box coordinates
-
-### `outputs/camri_rat_examples/`
-
-Selected visual examples from the benchmark. These figures show the MRI slice, oracle box, expert mask, and MedSAM prediction overlay.
-
-### `outputs/results_figures/`
-
-Summary figures and tables generated from the benchmark CSV.
-
-### `outputs/diagnostics/`
-
-Diagnostic figures from preprocessing experiments, such as WhiteStripe histogram checks.
-
----
-
-## Local Setup
-
-### 1. Create environment
-
-macOS/Linux:
+Create and activate the local environment:
 
 ```bash
 python -m venv medsam_env
@@ -146,153 +100,95 @@ source medsam_env/bin/activate
 pip install -r requirements.txt
 ```
 
-Windows PowerShell:
+Run project scripts with:
 
-```powershell
-python -m venv medsam_env
-.\medsam_env\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-If PowerShell blocks activation:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```bash
+./medsam_env/bin/python <script>
 ```
 
 ---
 
-### 2. Clone MedSAM locally
+## Core Benchmark
 
-The official MedSAM source code is not included in this repository.
-
-Clone it inside the project root:
+Reference implementation:
 
 ```bash
-git clone https://github.com/bowang-lab/MedSAM.git
+./medsam_env/bin/python scripts/core/evaluate_medsam_camri_rat.py \
+  --mri-root "../Datasets/Image_Database/CAMRI Rat Brain MRI Data" \
+  --mask-root "../Datasets/Mask_Database/RodentBrainMask/CAMRI Rat"
 ```
 
-Expected local structure:
+The core benchmark matches CAMRI MRI volumes with expert masks, creates an
+oracle box from each non-empty expert-mask slice, runs MedSAM, and reports Dice,
+IoU, precision, recall, and Hausdorff.
+
+---
+
+## Failure Analysis
+
+Use the experimental failure-analysis script to run targeted subject groups and
+compare easy vs hard runs:
+
+```bash
+./medsam_env/bin/python scripts/experimental/evaluate_medsam_failure_analysis.py \
+  --run-name easy_subjects \
+  --subjects sub-001 sub-002 sub-003 sub-004 sub-005 \
+  --device cpu
+
+./medsam_env/bin/python scripts/experimental/evaluate_medsam_failure_analysis.py \
+  --run-name hard_subjects \
+  --subjects sub-050 sub-066 sub-086 sub-109 sub-112 \
+  --device cpu
+
+./medsam_env/bin/python scripts/experimental/evaluate_medsam_failure_analysis.py \
+  --compare-runs easy_subjects hard_subjects
+```
+
+Outputs are organized under:
 
 ```text
-.
-├── MedSAM/
-├── evaluate_medsam_camri_rat.py
-└── ...
+outputs/failure_analysis/
+├── runs/<run-name>/
+│   ├── tables/
+│   ├── figures/
+│   └── overlays/
+├── latest/
+└── comparison/
 ```
 
 ---
 
-### 3. Add MedSAM checkpoint
+## Skull-Stripping Demo
 
-Place the MedSAM ViT-B checkpoint at:
-
-```text
-MedSAM/work_dir/MedSAM/medsam_vit_b.pth
-```
-
-The checkpoint is not tracked by Git.
-
----
-
-### 4. Add local datasets
-
-The main benchmark expects:
-
-```text
-Image Database/
-└── CAMRI Rat Brain MRI Data/
-
-Mask_Database/
-└── RodentBrainMask/
-    └── CAMRI Rat/
-```
-
-These folders are ignored because they contain raw imaging data and masks.
-
----
-
-## Running the Benchmark
-
-Smoke test:
-
-macOS/Linux:
+Generate a complete MedSAM skull-stripped NIfTI demo volume for 3D Slicer:
 
 ```bash
-MPLBACKEND=Agg medsam_env/bin/python evaluate_medsam_camri_rat.py --max-subjects 1
-```
-
-Windows PowerShell:
-
-```powershell
-$env:MPLBACKEND="Agg"
-python evaluate_medsam_camri_rat.py --max-subjects 1
-```
-
-Full run:
-
-macOS/Linux:
-
-```bash
-MPLBACKEND=Agg medsam_env/bin/python evaluate_medsam_camri_rat.py
-```
-
-Windows PowerShell:
-
-```powershell
-$env:MPLBACKEND="Agg"
-python evaluate_medsam_camri_rat.py
-```
-
----
-
-## Generating Figures
-
-After running the benchmark:
-
-macOS/Linux:
-
-```bash
-MPLBACKEND=Agg medsam_env/bin/python create_medsam_results_figures.py
-```
-
-Windows PowerShell:
-
-```powershell
-$env:MPLBACKEND="Agg"
-python create_medsam_results_figures.py
+./medsam_env/bin/python scripts/experimental/create_medsam_skull_stripped_example.py \
+  --subject-id sub-001 \
+  --device cpu
 ```
 
 Outputs are saved to:
 
 ```text
-outputs/results_figures/
+outputs/demo_skull_stripping/sub-001/
+├── volumes/
+│   ├── medsam_pred_mask.nii.gz
+│   └── medsam_skull_stripped.nii.gz
+├── figures/
+├── tables/
+└── README.md
 ```
+
+Both NIfTI volumes preserve the original MRI affine/header geometry and can be
+opened directly in 3D Slicer.
 
 ---
 
-## Collaboration Notes
+## Notes
 
-Before working on another computer:
-
-```bash
-git pull
-```
-
-After making changes:
-
-```bash
-git add .
-git commit -m "Describe the change"
-git push
-```
-
-Do not commit raw data, masks, checkpoints, virtual environments, or external repositories.
-
----
-
-## Author
-
-Esteban Felix
-Computer Engineering
-Purdue University Indianapolis
+- This repository is a research prototype, not clinical software.
+- Do not modify `scripts/core/` unless explicitly requested.
+- Prefer incremental experiments in `scripts/experimental/`.
+- Preserve raw data, masks, checkpoints, and generated local environments
+  outside version control.
