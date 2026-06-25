@@ -1,0 +1,3 @@
+group,subject_ids,n_subjects,n_slices,mean_dice,median_dice,worst_dice,mean_precision,mean_recall,mean_mask_area,mean_box_area
+Easy,,0,0,nan,nan,nan,nan,nan,nan,nan
+Hard / current,"sub-050, sub-066, sub-086, sub-109, sub-112",5,276,0.8682455376121114,0.9531455856853344,0.0,0.8564664758405969,0.9279630849895197,4555.20652173913,8453.72463768116

@@ -1,0 +1,13 @@
+section,item,value
+overall_run_summary,selected_subjects,"sub-001, sub-002, sub-003, sub-004, sub-005"
+overall_run_summary,number_of_subjects,5
+overall_run_summary,number_of_slices,60
+overall_run_summary,mean_dice,0.9652
+overall_run_summary,median_dice,0.9685
+overall_run_summary,worst_dice,0.9350
+overall_run_summary,best_dice,0.9801
+failure_interpretation,typical_performance,median Dice 0.9685
+failure_interpretation,outlier_effect,mean Dice is lower than median Dice by 0.0033
+failure_interpretation,worst_failure,"sub-004, slice 1, Dice 0.9350"
+failure_interpretation,main_suspected_failure_type,over-segmentation / wrong structure
+failure_interpretation,small_slice_evidence,worst 10 mean mask area 12038.4 px; all-slice mean 11136.1 px
